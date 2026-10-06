@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yumeship OS - تطبيق دراسة البكالوريا كامل</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Alexandria', 'sans-serif'],
+            comfortaa: ['Comfortaa', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --brand-color: #F472B6;
+      --brand-light: #FDF2F8;
+      --brand-border: #FBCFE8;
+    }
+    body {
+      font-family: 'Alexandria', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #FFF0F5;
+      color: #1e293b;
+      user-select: none;
+    }
+    .brand-btn {
+      background-color: var(--brand-color);
+      color: white;
+      transition: all 0.2s ease;
+    }
+    .brand-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    .brand-text {
+      color: var(--brand-color);
+    }
+    .brand-border {
+      border-color: var(--brand-border);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(251, 207, 232, 0.8);
+      box-shadow: 0 10px 25px -5px rgba(244, 114, 182, 0.1);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col relative overflow-x-hidden">
+  <div id="app" class="flex-1 flex flex-col min-h-screen"></div>
+
+  <script>
+    // Offline Web Audio
+    const WebAudio = {
+      ctx: null,
+      getCtx() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        return this.ctx;
+      },
+      playClick() {
+        try {
+          const ctx = this.getCtx();
+          if (!ctx) return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.04);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.05);
+        } catch(e){}
+      },
+      playBell() {
+        try {
+          const ctx = this.getCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.1);
+            gain.gain.setValueAtTime(0.12, now + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.8);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.1);
+            osc.stop(now + i * 0.1 + 0.9);
+          });
+        } catch(e){}
+      }
+    };
+
+    const STORAGE_KEY = 'yumeship_bac_app_data';
+    const DEFAULT_DATA = {
+      userProfile: {
+        name: 'طالب البكالوريا المتميز',
+        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=BacExcellence',
+        stream: 'شعبة علوم تجريبية',
+        motto: 'طريقي نحو الامتياز ومعدل 18 إن شاء الله'
+      },
+      pomodoroStats: {
+        totalSecondsStudied: 3600 * 12,
+        sessionsCompleted: 14,
+        streakDays: 5,
+        lastStudyDate: new Date().toISOString().split('T')[0],
+        todaySeconds: 1800
+      },
+      settings: {
+        siteColor: '#F472B6',
+        customBgColor: '#FFF0F5'
+      },
+      subjects: [
+        {
+          name: 'الرياضيات',
+          code: 'MATH',
+          coefficient: 7,
+          units: [
+            {
+              title: 'المحور الأول: الدوال العددية والنهايات والاشتقاقية',
+              lessons: [
+                { name: 'الدوال العددية والنهايات وإزالة حالات عدم التعيين', status: 'mastered' },
+                { name: 'الدالة الأسية واللوغاريتمية النيبيرية', status: 'studying' },
+                { name: 'الاستمرارية ونظرية القيم المتوسطة', status: 'not_started' }
+              ]
+            },
+            {
+              title: 'المحور الثاني: المتتاليات العددية والاحتمالات',
+              lessons: [
+                { name: 'المتتاليات الحسابية والهندسية والبرهان بالتراجع', status: 'mastered' },
+                { name: 'الاحتمالات والمتغير العشوائي', status: 'not_started' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'العلوم الفيزيائية',
+          code: 'PHYS',
+          coefficient: 6,
+          units: [
+            {
+              title: 'الوحدة الأولى: المتابعة الزمنية لتحول كيميائي',
+              lessons: [
+                { name: 'المتابعة الزمنية وطرق المتابعة والسرعات', status: 'mastered' },
+                { name: 'العوامل الحركية وزمن نصف التفاعل', status: 'studying' }
+              ]
+            },
+            {
+              title: 'الوحدة الثانية: التحولات النووية',
+              lessons: [
+                { name: 'النشاط الإشعاعي وقانون التناقص الإشعاعي', status: 'mastered' },
+                { name: 'طاقة الربط والانشطار والاندماج النووي', status: 'not_started' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'علوم الطبيعة والحياة',
+          code: 'SCI',
+          coefficient: 6,
+          units: [
+            {
+              title: 'المجال الأول: التخصص الوظيفي للبروتينات',
+              lessons: [
+                { name: 'آلية تركيب البروتين (الاستنساخ والترجمة)', status: 'mastered' },
+                { name: 'العلاقة بين بنية ووظيفة البروتين', status: 'studying' },
+                { name: 'النشاط الإنزيمي للبروتينات', status: 'not_started' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'اللغة العربية وآدابها',
+          code: 'AR',
+          coefficient: 3,
+          units: [
+            {
+              title: 'المحور الأول: الشعر والمدائح والمدرسة الكلاسيكية',
+              lessons: [
+                { name: 'شعر المديح والزهد في عصر الانحطاط', status: 'mastered' },
+                { name: 'شعر المنفى ومدرسة الإحياء والبعث', status: 'mastered' },
+                { name: 'شعر المهجر والرابطة القلمية', status: 'studying' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'الفلسفة',
+          code: 'PHIL',
+          coefficient: 2,
+          units: [
+            {
+              title: 'الإشكالية الأولى: في السؤال بين المشكلة والإشكالية',
+              lessons: [
+                { name: 'المشكلة العلمية والإشكالية الفلسفية', status: 'mastered' },
+                { name: 'فلسفة الرياضيات وأصل المفاهيم الرياضية', status: 'studying' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'التاريخ والجغرافيا',
+          code: 'HG',
+          coefficient: 2,
+          units: [
+            {
+              title: 'التاريخ: تطور العالم في ظل القطبية الثنائية',
+              lessons: [
+                { name: 'بروز الصراع وتشكل العالم (الحرب الباردة)', status: 'mastered' },
+                { name: 'مساعي الانفراج الدولي والتعايش السلمي', status: 'studying' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'اللغة الإنجليزية',
+          code: 'ENG',
+          coefficient: 2,
+          units: [
+            {
+              title: 'Unit 1: Ethics in Business',
+              lessons: [
+                { name: 'Corruption, Embezzlement & Bribery Vocabulary', status: 'mastered' },
+                { name: 'Expressing Wish and Regret (Grammar)', status: 'studying' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'اللغة الفرنسية',
+          code: 'FR',
+          coefficient: 2,
+          units: [
+            {
+              title: 'Projet 1: Le texte d histoire',
+              lessons: [
+                { name: 'Les visées communicatives du texte historique', status: 'mastered' },
+                { name: 'Le compte rendu objectif et critique', status: 'studying' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'العلوم الإسلامية',
+          code: 'ISL',
+          coefficient: 2,
+          units: [
+            {
+              title: 'الوحدة الأولى: العقيدة والقرآن الكريم',
+              lessons: [
+                { name: 'العقيدة الإسلامية وأثرها على الفرد والمجتمع', status: 'mastered' },
+                { name: 'وسائل القرآن الكريم في تثبيت العقيدة الإسلامية', status: 'mastered' }
+              ]
+            }
+          ]
+        }
+      ],
+      months: [
+        { nameAr: 'سبتمبر', nameEn: 'September', quote: 'بداية الانطلاقة وتنظيم الوقت', generalGoals: [{ text: 'ضبط برنامج الدراسة اليومي', isCompleted: true }, { text: 'مراجعة المكتسبات القبلية في الرياضيات والفيزياء', isCompleted: true }] },
+        { nameAr: 'أكتوبر', nameEn: 'October', quote: 'ترسيخ العادات والتركيز', generalGoals: [{ text: 'إنهاء محور الدوال العددية كاملاً', isCompleted: true }, { text: 'إنهاء الوحدة الأولى في العلوم الطبيعية', isCompleted: false }] },
+        { nameAr: 'نوفمبر', nameEn: 'November', quote: 'التحضير لاختبارات الفصل الأول', generalGoals: [{ text: 'حل 10 مواضيع بكالوريا سابقة', isCompleted: false }] },
+        { nameAr: 'ديسمبر', nameEn: 'December', quote: 'حصاد الفصل الأول وعطلة الشتاء', generalGoals: [{ text: 'استدراك النقائص ومراجعة الحفظيات', isCompleted: false }] },
+        { nameAr: 'جانفي', nameEn: 'January', quote: 'انطلاقة الفصل الثاني بقوة', generalGoals: [{ text: 'التحولات النووية والمتتاليات', isCompleted: false }] },
+        { nameAr: 'فيفري', nameEn: 'February', quote: 'تثبيت المعلومات وحل المسائل الصعبة', generalGoals: [{ text: 'الكهرباء والتناقص الإشعاعي', isCompleted: false }] },
+        { nameAr: 'مارس', nameEn: 'March', quote: 'امتحانات الفصل الثاني وعطلة الربيع', generalGoals: [{ text: 'معسكر مراجعة شامل للفصلين', isCompleted: false }] },
+        { nameAr: 'أفريل', nameEn: 'April', quote: 'العد التنازلي والمراجعة النهائية', generalGoals: [{ text: 'حفظ مصطلحات وشخصيات التاريخ والجغرافيا', isCompleted: false }] },
+        { nameAr: 'ماي', nameEn: 'May', quote: 'البكالوريا التجريبية (الامتحان الأبيض)', generalGoals: [{ text: 'محاكاة كاملة لظروف الامتحان الرسمي', isCompleted: false }] },
+        { nameAr: 'جوان', nameEn: 'June', quote: 'أيام الحصاد ونيل شهادة البكالوريا', generalGoals: [{ text: 'الهدوء والتركيز والتوكل على الله', isCompleted: false }] }
+      ],
+      schedule: [
+        { dayIndex: 0, time: '17:30 - 19:30', subject: 'الرياضيات', task: 'حل مسائل شاملة في الدوال' },
+        { dayIndex: 0, time: '20:00 - 21:30', subject: 'العلوم الفيزيائية', task: 'تمارين المتابعة الزمنية' },
+        { dayIndex: 1, time: '17:30 - 19:30', subject: 'علوم الطبيعة والحياة', task: 'منهجية الإجابة واستغلال الوثائق' },
+        { dayIndex: 1, time: '20:00 - 21:30', subject: 'التاريخ والجغرافيا', task: 'حفظ تواريخ وشخصيات الحرب الباردة' },
+        { dayIndex: 2, time: '17:30 - 19:30', subject: 'الرياضيات', task: 'المتتاليات العددية' },
+        { dayIndex: 3, time: '17:30 - 19:30', subject: 'الفيزياء', task: 'تمارين التحولات النووية' },
+        { dayIndex: 4, time: '17:30 - 19:30', subject: 'الفلسفة', task: 'كتابة مقال فلسفي بالمقارنة' },
+        { dayIndex: 5, time: '09:00 - 12:00', subject: 'العلوم الطبيعية', task: 'حل موضوع بكالوريا كامل' },
+        { dayIndex: 6, time: '09:00 - 12:00', subject: 'الرياضيات', task: 'مسألة شاملة ذات 7 نقاط' }
+      ]
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return { ...DEFAULT_DATA, ...JSON.parse(raw) };
+      } catch(e){}
+      return DEFAULT_DATA;
+    }
+
+    let state = loadState();
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){}
+    }
+
+    let screen = 'desktop'; // 'game_title' | 'desktop'
+    let tab = 'home';
+    let pomoLeft = 25 * 60;
+    let pomoRunning = false;
+    let pomoTimer = null;
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    function render() {
+      const root = document.getElementById('app');
+      if (!root) return;
+      const days = Math.max(0, Math.floor((new Date(new Date().getFullYear() + '-06-08T08:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+      const hours = ((state.pomodoroStats?.totalSecondsStudied || 0) / 3600).toFixed(1);
+
+      root.innerHTML = `
+        <header class="w-full glass-card border-b brand-border px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-pink-100 border brand-border overflow-hidden">
+              <img src="${state.userProfile.avatar}" class="w-full h-full object-cover">
+            </div>
+            <div>
+              <span class="text-xs font-bold brand-text block">${state.userProfile.name}</span>
+              <span class="text-[10px] text-slate-400 font-medium">${state.userProfile.stream}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-xl bg-white border brand-border brand-text text-xs font-bold">
+              ⏳ باقي ${days} يوم للباك
+            </span>
+            <span class="hidden sm:inline px-3 py-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold font-mono">
+              ⏱️ ${hours}h دراسة
+            </span>
+          </div>
+
+          <button onclick="downloadSelf()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer">
+            <span>📥 حفظ نسخة index.html</span>
+          </button>
+        </header>
+
+        <div class="flex-1 flex">
+          <aside class="w-16 sm:w-20 glass-card border-l brand-border flex flex-col items-center py-4 gap-2 shrink-0">
+            ${navBtn('home', '🏠', 'الرئيسية')}
+            ${navBtn('subjects', '📚', 'المواد')}
+            ${navBtn('pomodoro', '⏱️', 'بومودورو')}
+            ${navBtn('months', '🎯', 'الأشهر')}
+            ${navBtn('schedule', '📅', 'الجدول')}
+          </aside>
+
+          <main class="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full overflow-y-auto">
+            ${renderTab(tab)}
+          </main>
+        </div>
+      `;
+    }
+
+    function navBtn(k, icon, name) {
+      const active = tab === k;
+      return `
+        <button onclick="setTab('${k}')" class="w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 cursor-pointer ${active ? 'brand-btn shadow-md' : 'bg-white brand-text border brand-border hover:bg-pink-50'}">
+          <span class="text-base">${icon}</span>
+          <span class="text-[9px] font-bold">${name}</span>
+        </button>
+      `;
+    }
+
+    function renderTab(t) {
+      if (t === 'subjects') {
+        return `
+          <div class="space-y-4">
+            <h2 class="text-lg font-black brand-text">📚 متابعة مواد البكالوريا التسعة</h2>
+            ${state.subjects.map((s, sIdx) => `
+              <div class="glass-card rounded-2xl p-4 border brand-border space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b brand-border">
+                  <h3 class="text-base font-bold text-slate-800">${s.name} (معامل ${s.coefficient})</h3>
+                  <span class="text-xs brand-text font-bold">${s.code}</span>
+                </div>
+                <div class="space-y-2">
+                  ${s.units.map((u, uIdx) => `
+                    <div class="bg-pink-50/50 p-2.5 rounded-xl border brand-border space-y-1.5">
+                      <h4 class="text-xs font-bold text-slate-700">${u.title}</h4>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${u.lessons.map((l, lIdx) => `
+                          <div onclick="toggleLesson(${sIdx}, ${uIdx}, ${lIdx})" class="p-2 rounded-lg bg-white border ${l.status === 'mastered' ? 'border-emerald-400 bg-emerald-50 text-emerald-800 font-bold' : 'border-slate-200'} text-xs flex justify-between cursor-pointer">
+                            <span class="truncate ml-1">${l.name}</span>
+                            <span class="text-[10px] shrink-0">${l.status === 'mastered' ? 'متقن ✓' : 'لم يبدأ'}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      if (t === 'pomodoro') {
+        return `
+          <div class="max-w-md mx-auto text-center space-y-6 pt-4">
+            <h2 class="text-xl font-black brand-text">⏱️ مؤقت بومودورو الدراسي</h2>
+            <div class="glass-card rounded-3xl p-8 border-2 brand-border space-y-6">
+              <span id="pomo-num" class="text-7xl font-black font-mono brand-text block">${formatTime(pomoLeft)}</span>
+              <div class="flex justify-center gap-3">
+                <button onclick="togglePomo()" class="px-8 py-3 rounded-2xl brand-btn text-white font-bold cursor-pointer">
+                  ${pomoRunning ? 'إيقاف مؤقت ⏸' : 'ابدأ الجلسة ▶'}
+                </button>
+                <button onclick="resetPomo()" class="p-3 rounded-2xl bg-white border brand-border brand-text font-bold cursor-pointer">
+                  🔄
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (t === 'months') {
+        return `
+          <div class="space-y-4">
+            <h2 class="text-lg font-black brand-text">🎯 أهداف ومحطات الأشهر للباك</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              ${state.months.map((m, mIdx) => `
+                <div class="glass-card rounded-2xl p-4 border brand-border space-y-2">
+                  <h3 class="text-sm font-bold brand-text">${m.nameAr} - ${m.nameEn}</h3>
+                  <div class="space-y-1">
+                    ${(m.generalGoals || []).map((g, gIdx) => `
+                      <div onclick="toggleGoal(${mIdx}, ${gIdx})" class="p-2 rounded-xl bg-white border text-xs flex justify-between cursor-pointer">
+                        <span class="${g.isCompleted ? 'line-through text-slate-400' : 'text-slate-700'}">${g.text}</span>
+                        <span>${g.isCompleted ? '✅' : '⬜'}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (t === 'schedule') {
+        const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        return `
+          <div class="space-y-4">
+            <h2 class="text-lg font-black brand-text">📅 جدول المراجعة الأسبوعي</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              ${days.map((d, dIdx) => `
+                <div class="glass-card rounded-2xl p-3.5 border brand-border space-y-2">
+                  <h3 class="text-xs font-bold brand-text pb-1 border-b brand-border">${d}</h3>
+                  <div class="space-y-1.5">
+                    ${state.schedule.filter(s => s.dayIndex === dIdx).map(s => `
+                      <div class="p-2 bg-white rounded-xl border text-xs">
+                        <div class="flex justify-between font-bold">
+                          <span>${s.subject}</span>
+                          <span class="text-pink-600 font-mono text-[10px]">${s.time}</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-0.5">${s.task}</p>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Default Home
+      return `
+        <div class="space-y-5">
+          <div class="glass-card rounded-3xl p-6 border brand-border bg-gradient-to-br from-white via-pink-50/50 to-rose-50/60">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold brand-btn font-comfortaa">مرحباً بك 🌸</span>
+            <h2 class="text-2xl font-black text-slate-800 mt-2">${state.userProfile.name}</h2>
+            <p class="text-xs text-slate-600 mt-1">${state.userProfile.motto}</p>
+            <div class="mt-4 flex gap-2">
+              <button onclick="setTab('pomodoro')" class="px-4 py-2 rounded-xl brand-btn text-white text-xs font-bold cursor-pointer">
+                ⏱️ ابدأ جلسة بومودورو
+              </button>
+              <button onclick="setTab('subjects')" class="px-4 py-2 rounded-xl bg-white border brand-border brand-text text-xs font-bold cursor-pointer">
+                📚 تصفح المنهاج
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="glass-card rounded-2xl p-4 border brand-border text-center">
+              <span class="text-xl block">🔥</span>
+              <span class="text-xl font-bold brand-text">${state.pomodoroStats.streakDays}</span>
+              <span class="text-[11px] text-slate-400 block">أيام حماس</span>
+            </div>
+            <div class="glass-card rounded-2xl p-4 border brand-border text-center">
+              <span class="text-xl block">⏱️</span>
+              <span class="text-xl font-bold text-purple-600">${((state.pomodoroStats.totalSecondsStudied || 0) / 3600).toFixed(1)}h</span>
+              <span class="text-[11px] text-slate-400 block">ساعات مراجعة</span>
+            </div>
+            <div class="glass-card rounded-2xl p-4 border brand-border text-center">
+              <span class="text-xl block">🎯</span>
+              <span class="text-xl font-bold text-emerald-600">100%</span>
+              <span class="text-[11px] text-slate-400 block">جاهزية الباك</span>
+            </div>
+            <div class="glass-card rounded-2xl p-4 border brand-border text-center">
+              <span class="text-xl block">🎓</span>
+              <span class="text-xl font-bold text-rose-500">18.00</span>
+              <span class="text-[11px] text-slate-400 block">المعدل المستهدف</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.setTab = function(t) {
+      WebAudio.playClick();
+      tab = t;
+      render();
+    };
+
+    window.toggleLesson = function(s, u, l) {
+      WebAudio.playClick();
+      const les = state.subjects[s].units[u].lessons[l];
+      les.status = les.status === 'mastered' ? 'not_started' : 'mastered';
+      if (les.status === 'mastered') WebAudio.playBell();
+      saveState();
+      render();
+    };
+
+    window.toggleGoal = function(m, g) {
+      WebAudio.playClick();
+      const goal = state.months[m].generalGoals[g];
+      goal.isCompleted = !goal.isCompleted;
+      if (goal.isCompleted) WebAudio.playBell();
+      saveState();
+      render();
+    };
+
+    window.togglePomo = function() {
+      WebAudio.playClick();
+      pomoRunning = !pomoRunning;
+      if (pomoRunning) {
+        pomoTimer = setInterval(() => {
+          if (pomoLeft > 0) {
+            pomoLeft--;
+            state.pomodoroStats.totalSecondsStudied++;
+            const el = document.getElementById('pomo-num');
+            if (el) el.innerText = formatTime(pomoLeft);
+          } else {
+            clearInterval(pomoTimer);
+            pomoRunning = false;
+            WebAudio.playBell();
+            render();
+          }
+        }, 1000);
+      } else {
+        clearInterval(pomoTimer);
+      }
+      render();
+    };
+
+    window.resetPomo = function() {
+      WebAudio.playClick();
+      clearInterval(pomoTimer);
+      pomoRunning = false;
+      pomoLeft = 25 * 60;
+      render();
+    };
+
+    window.downloadSelf = function() {
+      WebAudio.playBell();
+      const full = '<!DOCTYPE html>\\n' + document.documentElement.outerHTML;
+      const b = new Blob([full], { type: 'text/html;charset=utf-8' });
+      const u = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = u;
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(u);
+    };
+
+    render();
+  </script>
+</body>
+</html>
