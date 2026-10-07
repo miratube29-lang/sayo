@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "stream": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "email"]
+    },
+    "UserStudyData": {
+      "title": "UserStudyData",
+      "description": "Comprehensive user study data including subjects, schedule, pomodoro stats, months, workspace items, and settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "subjects": { "type": "string" },
+        "months": { "type": "string" },
+        "schedule": { "type": "string" },
+        "pomodoroStats": { "type": "string" },
+        "workspaceItems": { "type": "string" },
+        "todos": { "type": "string" },
+        "settings": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/users/{userId}/data/{docId}": {
+      "schema": "UserStudyData",
+      "description": "User private study records and synchronization documents"
+    }
+  }
+}
